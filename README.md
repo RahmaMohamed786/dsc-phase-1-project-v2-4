@@ -19,7 +19,7 @@ In the folder `zippedData` are movie datasets from:
 * [TheMovieDB](https://www.themoviedb.org/)
 * [The Numbers](https://www.the-numbers.com/)
 
-I used datasets from these 3
+Three datasets were used 
 
 [Box Office Mojo](https://www.boxofficemojo.com/)
 [IMDB](https://www.imdb.com/)
@@ -27,80 +27,67 @@ I used datasets from these 3
 
 
 # Loading the datasets
-tn_df = pd.read_csv("zippedData/tn.movie_budgets.csv.gz", index_col=0)
-imdb_df = pd.read_sql("""SELECT * FROM movie_basics  JOIN movie_ratings USING(movie_id);""", conn)
-bom_df = pd.read_csv("zippedData/bom.movie_gross.csv.gz")
+tn_data = pd.read_csv("zippedData/tn.movie_budgets.csv.gz", index_col=0)
+imdb_data = pd.read_sql("""SELECT * FROM movie_basics  JOIN movie_ratings USING(movie_id);""", conn)
+bom_data = pd.read_csv("zippedData/bom.movie_gross.csv.gz", index_col=0)
 
 ## Data Cleaning
-
+### Box office Mojo Dataset
+bom_data.drop(columns=["foreign_gross"], inplace=True)
+bom_data[bom_data["foreign_gross"].isna()]
 
 ### IMDB Dataset
-imdb_df["genres"].fillna("missing", inplace=True)
-imdb_df.drop(columns=["movie_id","original_title"], inplace=True)
-
-
-### Box office Mojo Dataset
-bom_df.drop(columns=["foreign_gross"], inplace=True)
-bom_df = bom_df.rename(columns={'title': 'movie'})
+imdb_data.isna().sum()
+imdb_data["genres"].fillna("unknown", inplace=True)
+dups= imdb_data.duplicated().any().sum()
 
 ### The Numbers Dataset
 
-#### This was how I hanged the values to number type, and got rid of  Dollarsigns and Commas
-tn_df['domestic_gross'] = tn_df['domestic_gross'].str.replace('$', '').str.replace(',', '')
-tn_df['production_budget'] = tn_df['production_budget'].str.replace('$', '').str.replace(',', '')
-tn_df['worldwide_gross'] = tn_df['worldwide_gross'].str.replace('$', '').str.replace(',', '')
+#### How to strip dollar signs and the commas first
+#use string method to replace dollar and comma with nothing
+tn_data['domestic_gross'] = tn_data['domestic_gross'].str.replace('$', '').str.replace(',', '')
+tn_data['production_budget'] = tn_data['production_budget'].str.replace('$', '').str.replace(',', '')
+tn_data['worldwide_gross'] = tn_data['worldwide_gross'].str.replace('$', '').str.replace(',', '')
 
-tn_df["domestic_gross"]=pd.to_numeric(tn_df["domestic_gross"])
 
-### Combining the datasets with Merge
-merged_df = imdb_df.merge(bom_df, on=['movie', 'year']).merge(tn_df, on=['movie', 'year'])
+### Merging the Datasets
 
-### creating a grouped dataset to compare monthly data
-merged_df['month'] = merged_df['release_date'].dt.month 
-grouped_df = merged_df.groupby(['year', 'month'])["worldwide_gross"].mean()
+merged_data = imdb_data.merge(bom_data, on=['title', 'year']).merge(tn_data, on=['title', 'year'])
+
 
 
 # Visualizations
 
-### Scatter plot and Histogram to compare the Average rating and Worldwide Gross as well as Domestic
+### Checking the Genres that are popular in rating
 
-![rating vs gross](https://user-images.githubusercontent.com/127976914/232333724-d267ce0d-7381-4598-93cc-4abcdb59cc04.png)
+![Image 1](https://user-images.githubusercontent.com/130972835/232905728-11b0dd92-04c4-46db-9349-2ea1fef5547c.jpeg)
+### Checking and comparing Runtime vs rating
+![image 2](https://user-images.githubusercontent.com/130972835/232924108-ef0eaf47-3ac1-484f-852a-5e7670f18d1e.jpeg)
+## Production budget vs worldwide gross
 
-### Checking whether Production Budget has a relation with the worldwide gross
-![budget vs cost](https://user-images.githubusercontent.com/127976914/232334117-3dc0f5bc-8b1d-49dd-9b35-64a42e23c004.png)
-
-### Top and Bottom 5 Genres with worldwide gross returns in the box office
-![top bottom genres](https://user-images.githubusercontent.com/127976914/232334178-36ee71f2-c850-4aec-8928-1892e795b0bd.png)
-
-### Per year look at the worldwide Gross mean of each month in the past 6 years
-![per year monthly](https://user-images.githubusercontent.com/127976914/232334193-baa42cf9-0f9d-4954-b451-b8987ba99e05.png)
+![image 3](https://user-images.githubusercontent.com/130972835/232924203-a793bea9-171a-4e07-b55e-a3a3beaa2662.jpeg)
 
 
-## Findings
-### Budget
-The production budget has very strong positive correlation with the domestic and worldwide grosses
 
-### Average rating
--movies rated higher did much better in the box office,both for domestic and worlwide audiences, and in fact, movies rated lower than 5 did very poor
+Conclusions and recommendations
+### Budget for best returns
 
--curiously, the rating isn't really affected by increased budget, probably due to the fact that many things go into a production
+100 million should be the goal if we want a good return, however, smaller projects can be done if they are able to hit the 7-8 rating, even though it has a weak positive correlation with both domestic and worldwide gross, 
 
--it would seem the average rating has a weak positive correlation with both domestic and worldwide gross,
+### Genres to invest into for best ratings
 
-### Genre
-Generally genres dont really affect a rating, but the top 5 that make money worldwide are anything of the "adventure genre" involving scifi, animation and comedy
+Crime,Documentary          
+Adventure,Drama,Sci-Fi     
+Action,Drama               
+Mystery,Thriller           
+Action,Comedy,Drama        
+Action,Sci-Fi              
+Biography,Drama,Musical    
+Adventure,Drama,Western    
+Drama,History,Thriller     
+Drama,Western              
 
 ### Runtime
--Rating has a strong positive correlation with the runtime of the movie, but closer investigation shows the dirstibution is clustered within a value range of 80 to 140 minutes
+-Rating has a strong positive correlation with the runtime of the movie, the dirstibution is clustered within a value range of 80 to 140 minutes, hence a runtime of that range will suffice for normal movies.
 
-### Month of release
--it would seem from the per-year and mean of 5 years bar plots, that in the middle of the year and in November, these are the best times to release movies
-
-## Conlusions an Recommendations
-1) Mirosoft should invest in the Genres of Adventure, with scifi,comedy,and/or animation, with main projects being of the genre "Adventure,Drama,Scifi" as it gets high reviews as well as high grossing worldwide
-
-2) A high budget in these genres will give better returns worldwide, somewhere above the 100 million mark
-
-3)A runtime of Between 80 minutes and 140 minutes is the most consistent at good ratings
-
-4) Releasing between months 4-6, and at the tail end of the year might also give good worldwide grosses...probably because these are the months in which holidays occur eg easter, christmas
+Documentaries may be longer though 
